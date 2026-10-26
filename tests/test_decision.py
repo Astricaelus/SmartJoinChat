@@ -1,5 +1,6 @@
 from SmartJoinChat.decision import (
     MAX_PERSONA_PROMPT_CHARS,
+    SYSTEM_PROMPT,
     ProbabilityGate,
     build_decision_prompt,
     normalize_settings,
@@ -38,13 +39,18 @@ def test_build_decision_prompt_contains_activeness_and_history():
     )
 
     assert "Activeness: HIGH" in prompt
-    assert "Be eager but not disruptive" in prompt
     assert "[alice/12:00:00]: hello" in prompt
     assert "<transcript>" in prompt
     assert "helper" in prompt
     assert "large fish" in prompt
     assert "bot-123" in prompt
-    assert "does not need to be named or mentioned" in prompt
+
+
+def test_system_prompt_has_no_participation_rules():
+    assert "Make your own contextual judgment" in SYSTEM_PROMPT
+    assert "Prefer silence" not in SYSTEM_PROMPT
+    assert "direct use of any listed bot name" not in SYSTEM_PROMPT
+    assert "must join" not in SYSTEM_PROMPT
 
 
 def test_build_decision_prompt_includes_persona_and_limits_size():

@@ -146,8 +146,7 @@ async def test_unprompted_decision_uses_isolated_provider_call():
     assert call["session_id"]
     assert "Activeness: LOW" in call["prompt"]
     assert "Bot names / aliases: bot-1" in call["prompt"]
-    assert "does not need to be named or mentioned" in call["prompt"]
-    assert "without being named, mentioned, or explicitly" in call["system_prompt"]
+    assert "Make your own contextual judgment" in call["system_prompt"]
     assert "[alice/12:00:03]: third" in call["prompt"]
     assert "[carol/12:00:05]: current" in call["prompt"]
     assert "[alice/12:00:00]: first" not in call["prompt"]
@@ -176,7 +175,7 @@ async def test_decision_prompt_uses_platform_bot_name():
 
     prompt = context.llm_calls[0]["prompt"]
     assert "Bot names / aliases: 大肥鱼" in prompt
-    assert "not an automatic decision" in context.llm_calls[0]["system_prompt"]
+    assert "Make your own contextual judgment" in context.llm_calls[0]["system_prompt"]
 
 
 @pytest.mark.asyncio

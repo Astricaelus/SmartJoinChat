@@ -82,6 +82,11 @@ The bot may join based on conversational relevance even when nobody mentions or
 invites it by name. A name reference is treated as context to evaluate, not an
 automatic reply trigger.
 
+After the fixed eligibility checks and the optional probability gate, the LLM's
+parsed `join` boolean is the participation decision. There are no keyword, name,
+length, or sentiment filters after the gate. Only the JSON output contract and
+fail-closed error handling remain.
+
 ## Compatibility note
 
 AstrBot 4.29.x does not expose a public registry for active-reply strategies or

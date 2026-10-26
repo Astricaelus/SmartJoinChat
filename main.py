@@ -36,7 +36,7 @@ from .integration import (
     "astrbot_plugin_smart_join_chat",
     "Astricaelus",
     "Let a model decide contextually whether the bot should join a group chat.",
-    "1.0.2",
+    "1.0.3",
 )
 class SmartJoinChat(Star):
     def __init__(self, context: Context, config: AstrBotConfig | None = None) -> None:
@@ -175,17 +175,18 @@ class SmartJoinChat(Star):
             return False
 
         settings = normalize_settings(read_strategy_settings(active_reply))
-        if not self._gate.should_continue(
-            event.unified_msg_origin,
-            enabled=settings["smart_join_gate_enable"],
-            probability=settings["smart_join_gate_probability"],
-            mode=settings["smart_join_gate_mode"],
-        ):
-            logger.debug(
-                "[SmartJoinChat] Probability gate skipped %s",
-                event.unified_msg_origin,
+        provider_id = settings["smart_join_provider_id"]
+        if not provider_id:
+            provider = await self.context.get_using_provider_async(
+                event.unified_msg_origin
             )
-            return False
+            if provider is None:
+                logger.warning(
+                    "[SmartJoinChat] No chat provider is available for %s",
+                    event.unified_msg_origin,
+                )
+                return False
+            provider_id = provider.meta().id
 
         lock = self._decision_locks.setdefault(
             event.unified_msg_origin,
@@ -200,24 +201,24 @@ class SmartJoinChat(Star):
 
         async with lock:
             try:
+                if not self._gate.should_continue(
+                    event.unified_msg_origin,
+                    enabled=settings["smart_join_gate_enable"],
+                    probability=settings["smart_join_gate_probability"],
+                    mode=settings["smart_join_gate_mode"],
+                ):
+                    logger.debug(
+                        "[SmartJoinChat] Probability gate skipped %s",
+                        event.unified_msg_origin,
+                    )
+                    return False
+
                 history = await self._recent_history(
                     group_context,
                     event,
                     group_cfg,
                     settings["smart_join_history_count"],
                 )
-                provider_id = settings["smart_join_provider_id"]
-                if not provider_id:
-                    provider = await self.context.get_using_provider_async(
-                        event.unified_msg_origin
-                    )
-                    if provider is None:
-                        logger.warning(
-                            "[SmartJoinChat] No chat provider is available for %s",
-                            event.unified_msg_origin,
-                        )
-                        return False
-                    provider_id = provider.meta().id
 
                 bot_names, persona_prompt = await self._decision_identity(event)
                 prompt = build_decision_prompt(
