@@ -219,10 +219,11 @@ class SmartJoinChat(Star):
                         return False
                     provider_id = provider.meta().id
 
+                bot_names = await self._bot_names(event)
                 prompt = build_decision_prompt(
                     history,
                     settings,
-                    bot_names=await self._bot_names(event),
+                    bot_names=bot_names,
                     bot_id=event.get_self_id(),
                     group_name=self._group_name(event),
                 )
@@ -235,8 +236,9 @@ class SmartJoinChat(Star):
                 )
                 join, reason = parse_decision(response.completion_text)
                 logger.info(
-                    "[SmartJoinChat] %s provider=%s join=%s reason=%s",
+                    "[SmartJoinChat] %s bot=%s provider=%s join=%s reason=%s",
                     event.unified_msg_origin,
+                    ",".join(bot_names) or "unknown",
                     provider_id,
                     join,
                     reason[:160],
