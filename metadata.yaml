@@ -7,7 +7,7 @@ desc: >-
 version: 1.0.0
 author: Astricaelus
 repo: https://github.com/Astricaelus/SmartJoinChat
-astrbot_version: ">=4.29.0,<5"
+astrbot_version: ">=4.29.0,<4.30"
 support_platforms:
   - aiocqhttp
   - qq_official

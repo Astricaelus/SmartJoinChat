@@ -33,7 +33,7 @@ git clone https://github.com/Astricaelus/SmartJoinChat.git
 
 Restart AstrBot or reload the plugin from `Extensions -> Plugins`.
 
-The plugin targets AstrBot `>=4.29.0,<5`.
+The plugin targets AstrBot `>=4.29.0,<4.30`.
 
 ## Configuration
 
