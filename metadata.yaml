@@ -1,6 +1,30 @@
-name: helloworld # 插件唯一识别名，以 astrbot_plugin_ 前缀开头
-display_name: helloworld # 用于展示的名字，可以是方便人类阅读的名字（需要版本 >= v4.5.0，低版本不会报错，请放心填写）
-desc: AstrBot 插件示例。 # 插件简短描述
-version: v1.3.0 # 插件版本号。格式：v1.1.1 或者 v1.1
-author: Soulter # 作者
-repo: https://github.com/Soulter/helloworld # 插件的仓库地址
+name: astrbot_plugin_smart_join_chat
+display_name: Smart Join Chat
+short_desc: Decide contextually whether the bot should join a group chat.
+desc: >-
+  Adds a context-aware active-reply method that asks a separate model whether
+  the bot should participate, with optional probability gating.
+version: 1.0.0
+author: Astricaelus
+repo: https://github.com/Astricaelus/SmartJoinChat
+astrbot_version: ">=4.29.0,<5"
+support_platforms:
+  - aiocqhttp
+  - qq_official
+  - qq_official_webhook
+  - telegram
+  - wecom
+  - wecom_ai_bot
+  - lark
+  - dingtalk
+  - discord
+  - slack
+  - kook
+  - vocechat
+  - weixin_official_account
+  - weixin_oc
+  - satori
+  - misskey
+  - line
+  - matrix
+  - mattermost

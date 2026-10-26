@@ -1,0 +1,81 @@
+{
+  "smart_join_provider_id": {
+    "description": "Default decision model",
+    "hint": "Fallback used when a profile has not chosen Smart context (LLM). Empty uses the bot's current chat model.",
+    "type": "string",
+    "default": "",
+    "_special": "select_provider"
+  },
+  "smart_join_history_count": {
+    "description": "Default recent messages",
+    "hint": "Fallback history window used when a profile has not configured its own value.",
+    "type": "int",
+    "default": 20,
+    "slider": {
+      "min": 1,
+      "max": 100,
+      "step": 1
+    }
+  },
+  "smart_join_activeness": {
+    "description": "Default activeness",
+    "hint": "Fallback prompt activeness used when a profile has not configured its own value.",
+    "type": "string",
+    "default": "medium",
+    "options": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "labels": [
+      "Low",
+      "Medium",
+      "High"
+    ]
+  },
+  "smart_join_gate_enable": {
+    "description": "Default probability gate",
+    "hint": "Fallback setting used when a profile has not configured its own value.",
+    "type": "bool",
+    "default": false
+  },
+  "smart_join_gate_probability": {
+    "description": "Default gate probability",
+    "hint": "Probability that a message reaches the model decision step.",
+    "type": "float",
+    "default": 0.2,
+    "slider": {
+      "min": 0,
+      "max": 1,
+      "step": 0.05
+    },
+    "condition": {
+      "smart_join_gate_enable": true
+    }
+  },
+  "smart_join_gate_mode": {
+    "description": "Default gate sampling",
+    "hint": "Raw uses independent random draws. Uniform spacing spreads allowed messages evenly.",
+    "type": "string",
+    "default": "raw",
+    "options": [
+      "raw",
+      "uniform"
+    ],
+    "labels": [
+      "Raw RNG value",
+      "Uniform spacing correction"
+    ],
+    "condition": {
+      "smart_join_gate_enable": true
+    }
+  },
+  "profile_snapshots": {
+    "description": "Profile setting snapshots",
+    "hint": "Internal data used to preserve profile fields across AstrBot restarts.",
+    "type": "dict",
+    "default": {},
+    "items": {},
+    "invisible": true
+  }
+}
