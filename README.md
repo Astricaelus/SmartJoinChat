@@ -10,6 +10,9 @@ decides whether the bot should join the conversation.
 - Shows all Smart Join Chat settings directly below the method selector.
 - Uses a dedicated, ephemeral context for the decision call. It does not read or
   mutate the main Agent conversation and does not persist a conversation.
+- Resolves the bot's display name from the platform adapter or active persona,
+  so calls such as “Are you there, `<bot name>`?” are understood as directed at
+  the bot.
 - Reuses AstrBot's group-chat context formatter and in-memory history, including
   image captions and the configured maximum history size.
 - Collects messages for the decision even when group-context injection is off,

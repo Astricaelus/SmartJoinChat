@@ -36,7 +36,7 @@ from .integration import (
     "astrbot_plugin_smart_join_chat",
     "Astricaelus",
     "Let a model decide contextually whether the bot should join a group chat.",
-    "1.0.0",
+    "1.0.1",
 )
 class SmartJoinChat(Star):
     def __init__(self, context: Context, config: AstrBotConfig | None = None) -> None:
@@ -222,8 +222,9 @@ class SmartJoinChat(Star):
                 prompt = build_decision_prompt(
                     history,
                     settings,
-                    bot_name=event.get_self_id(),
-                    group_name=event.get_group_id(),
+                    bot_names=await self._bot_names(event),
+                    bot_id=event.get_self_id(),
+                    group_name=self._group_name(event),
                 )
                 response = await self.context.llm_generate(
                     chat_provider_id=provider_id,
@@ -249,6 +250,94 @@ class SmartJoinChat(Star):
                     event.unified_msg_origin,
                 )
                 return False
+
+    async def _bot_names(self, event: AstrMessageEvent) -> list[str]:
+        """Resolve names and aliases the group might use for this bot."""
+        names: list[str] = []
+
+        def add_name(value: Any) -> None:
+            if not isinstance(value, str):
+                return
+            name = value.strip()
+            if name and name.lower() != "default" and name not in names:
+                names.append(name)
+
+        get_platform_inst = getattr(self.context, "get_platform_inst", None)
+        platform = (
+            get_platform_inst(event.get_platform_id())
+            if callable(get_platform_inst)
+            else None
+        )
+        if platform is not None:
+            platform_config = getattr(platform, "config", {})
+            if isinstance(platform_config, Mapping):
+                for key in ("bot_name", "wecom_ai_bot_name", "bot_nickname"):
+                    add_name(platform_config.get(key))
+            for attr in ("bot_name", "bot_nickname"):
+                add_name(getattr(platform, attr, None))
+
+            client = getattr(platform, "client", None)
+            if client is not None:
+                try:
+                    add_name(getattr(getattr(client, "robot", None), "name", None))
+                except Exception:  # noqa: BLE001 - adapter clients differ by platform
+                    logger.debug(
+                        "[SmartJoinChat] Platform client does not expose a robot name.",
+                        exc_info=True,
+                    )
+                for client_attr in ("user", "me"):
+                    user = getattr(client, client_attr, None)
+                    for attr in ("display_name", "global_name", "name", "username"):
+                        add_name(getattr(user, attr, None))
+
+        if not names:
+            persona_manager = getattr(self.context, "persona_manager", None)
+            conversation_manager = getattr(
+                self.context,
+                "conversation_manager",
+                None,
+            )
+            if persona_manager is not None:
+                try:
+                    persona_id = None
+                    if conversation_manager is not None:
+                        conversation_id = (
+                            await conversation_manager.get_curr_conversation_id(
+                                event.unified_msg_origin
+                            )
+                        )
+                        if conversation_id:
+                            conversation = await conversation_manager.get_conversation(
+                                event.unified_msg_origin,
+                                conversation_id,
+                            )
+                            if conversation is not None:
+                                persona_id = conversation.persona_id
+                    _, persona, _, _ = await persona_manager.resolve_selected_persona(
+                        umo=event.unified_msg_origin,
+                        conversation_persona_id=persona_id,
+                        platform_name=event.get_platform_name(),
+                        provider_settings=self.context.get_config(
+                            umo=event.unified_msg_origin
+                        ).get("provider_settings", {}),
+                    )
+                    if persona is not None:
+                        add_name(persona.get("name"))
+                except Exception:  # noqa: BLE001 - identity lookup is best-effort
+                    logger.debug(
+                        "[SmartJoinChat] Could not resolve the active persona name.",
+                        exc_info=True,
+                    )
+
+        if not names:
+            add_name(event.get_self_id())
+        return names
+
+    @staticmethod
+    def _group_name(event: AstrMessageEvent) -> str:
+        group = getattr(getattr(event, "message_obj", None), "group", None)
+        group_name = getattr(group, "group_name", None)
+        return str(group_name or event.get_group_id() or "")
 
     async def _recent_history(
         self,

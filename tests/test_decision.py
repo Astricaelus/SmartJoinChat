@@ -31,7 +31,8 @@ def test_build_decision_prompt_contains_activeness_and_history():
     prompt = build_decision_prompt(
         ["[alice/12:00:00]: hello", "[bob/12:00:03]: question"],
         settings,
-        bot_name="helper",
+        bot_names=["helper", "large fish"],
+        bot_id="bot-123",
         group_name="group-1",
     )
 
@@ -40,6 +41,8 @@ def test_build_decision_prompt_contains_activeness_and_history():
     assert "[alice/12:00:00]: hello" in prompt
     assert "<transcript>" in prompt
     assert "helper" in prompt
+    assert "large fish" in prompt
+    assert "bot-123" in prompt
 
 
 def test_parse_decision_accepts_json_and_fenced_json():

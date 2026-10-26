@@ -32,7 +32,7 @@ ACTIVENESS_GUIDANCE = {
         "Be eager but not disruptive. Join when there is a natural opening, a question, "
         "an active topic the bot can advance, or a chance to add warmth. Still avoid "
         "joining back-to-back messages or conversations that are clearly private between "
-        "other participants."
+        "other participants. When someone calls the bot by name, prefer joining."
     ),
 }
 
@@ -50,6 +50,8 @@ Use these rules:
   or add little value.
 - Prefer participation when the bot is addressed, can answer a concrete question, can
   resolve confusion, or has a natural and useful contribution.
+- A direct use of any listed bot name or alias is a strong invitation to join. Choose
+  join=true unless the transcript clearly shows the name refers to someone else.
 - A message does not need to mention the bot for participation to be appropriate.
 - Do not join only because a message is emotional, controversial, or contains a keyword;
   judge whether speaking would actually help.
@@ -123,7 +125,8 @@ def build_decision_prompt(
     history: list[str],
     settings: Mapping[str, Any],
     *,
-    bot_name: str = "",
+    bot_names: list[str] | None = None,
+    bot_id: str = "",
     group_name: str = "",
 ) -> str:
     """Build the isolated prompt sent to the decision model.
@@ -131,15 +134,18 @@ def build_decision_prompt(
     Args:
         history: Formatted recent group messages, oldest first.
         settings: Normalized SmartJoinChat settings.
-        bot_name: Display name of the bot, when available.
+        bot_names: Display names or aliases for the bot.
+        bot_id: Platform identifier for the bot.
         group_name: Display name or identifier of the group.
 
     Returns:
         A prompt containing the transcript and activeness instruction.
     """
     activeness = str(settings["smart_join_activeness"])
+    names = [name for name in (bot_names or []) if name]
     context_lines = [
-        f"Bot name: {bot_name or 'the bot'}",
+        f"Bot names / aliases: {', '.join(names) if names else 'unknown'}",
+        f"Bot platform ID: {bot_id or 'unknown'}",
         f"Group: {group_name or 'unknown'}",
         f"Activeness: {activeness.upper()}",
         ACTIVENESS_GUIDANCE[activeness],

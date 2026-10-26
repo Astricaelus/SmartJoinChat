@@ -37,6 +37,12 @@ class FakeEvent:
     def get_self_id(self):
         return "bot-1"
 
+    def get_platform_id(self):
+        return "paotuanqun-01"
+
+    def get_platform_name(self):
+        return "qq_official"
+
     def get_messages(self):
         return self._messages
 
@@ -71,17 +77,27 @@ class FakeProvider:
 
 
 class FakeContext:
-    def __init__(self, config: dict, *, joins: bool = True) -> None:
+    def __init__(
+        self,
+        config: dict,
+        *,
+        joins: bool = True,
+        platform=None,
+    ) -> None:
         self.config = config
         self.llm_calls = []
         self._joins = joins
         self.conversation_manager = None
+        self.platform = platform
 
     def get_config(self, umo=None):
         return self.config
 
     async def get_using_provider_async(self, umo=None):
         return FakeProvider()
+
+    def get_platform_inst(self, platform_id):
+        return self.platform
 
     async def llm_generate(self, **kwargs):
         self.llm_calls.append(kwargs)
@@ -129,12 +145,38 @@ async def test_contextual_decision_uses_isolated_provider_call():
     assert call["contexts"] == []
     assert call["session_id"]
     assert "Activeness: LOW" in call["prompt"]
+    assert "Bot names / aliases: bot-1" in call["prompt"]
     assert "[alice/12:00:03]: third" in call["prompt"]
     assert "[carol/12:00:05]: current" in call["prompt"]
     assert "[alice/12:00:00]: first" not in call["prompt"]
     assert "[bob/12:00:02]: second" not in call["prompt"]
     assert group_context.formatted_events == [event]
     assert context.conversation_manager is None
+
+
+@pytest.mark.asyncio
+async def test_decision_prompt_uses_platform_bot_name():
+    class Robot:
+        name = "大肥鱼"
+
+    class Client:
+        robot = Robot()
+
+    platform = SimpleNamespace(client=Client(), config={})
+    context = FakeContext(active_reply_config(), joins=True, platform=platform)
+    plugin = SmartJoinChat(context, None)
+    plugin._original_need_active_reply = _unexpected_original
+
+    await plugin._need_active_reply(
+        FakeGroupContext("platform:group:g1"),
+        FakeEvent(),
+    )
+
+    prompt = context.llm_calls[0]["prompt"]
+    assert "Bot names / aliases: 大肥鱼" in prompt
+    assert (
+        "A direct use of any listed bot name" in context.llm_calls[0]["system_prompt"]
+    )
 
 
 @pytest.mark.asyncio
