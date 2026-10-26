@@ -9,6 +9,7 @@ from astrbot.core.config.default import (
     DEFAULT_CONFIG,
 )
 from astrbot.core.config.i18n_utils import ConfigMetadataI18n
+from astrbot.dashboard.services.config_service import validate_config
 from SmartJoinChat import integration
 from SmartJoinChat import main as plugin_main
 from SmartJoinChat.decision import METHOD
@@ -78,6 +79,16 @@ def test_profile_bridge_adds_fields_and_restores_core_metadata(isolated_metadata
     active_reply = configs["default"]["provider_ltm_settings"]["active_reply"]
     assert active_reply["smart_join_history_count"] == 42
     assert active_reply["smart_join_activeness"] == "high"
+    errors, normalized = validate_config(
+        copy.deepcopy(configs["default"]),
+        integration.CONFIG_METADATA_2,
+        is_core=True,
+    )
+    assert errors == []
+    assert (
+        normalized["provider_ltm_settings"]["active_reply"]["smart_join_provider_id"]
+        == ""
+    )
 
     converted = ConfigMetadataI18n.convert_to_i18n_keys(integration.CONFIG_METADATA_3)
     converted_items = converted["ext_group"]["metadata"]["ltm"]["items"]
