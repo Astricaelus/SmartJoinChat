@@ -4,7 +4,7 @@ short_desc: Decide contextually whether the bot should join a group chat.
 desc: >-
   Adds a context-aware active-reply method that asks a separate model whether
   the bot should participate, with optional probability gating.
-version: 1.0.1
+version: 1.0.2
 author: Astricaelus
 repo: https://github.com/Astricaelus/SmartJoinChat
 astrbot_version: ">=4.29.0,<4.30"

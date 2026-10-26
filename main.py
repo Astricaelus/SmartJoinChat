@@ -36,7 +36,7 @@ from .integration import (
     "astrbot_plugin_smart_join_chat",
     "Astricaelus",
     "Let a model decide contextually whether the bot should join a group chat.",
-    "1.0.1",
+    "1.0.2",
 )
 class SmartJoinChat(Star):
     def __init__(self, context: Context, config: AstrBotConfig | None = None) -> None:
@@ -219,13 +219,14 @@ class SmartJoinChat(Star):
                         return False
                     provider_id = provider.meta().id
 
-                bot_names = await self._bot_names(event)
+                bot_names, persona_prompt = await self._decision_identity(event)
                 prompt = build_decision_prompt(
                     history,
                     settings,
                     bot_names=bot_names,
                     bot_id=event.get_self_id(),
                     group_name=self._group_name(event),
+                    persona_prompt=persona_prompt,
                 )
                 response = await self.context.llm_generate(
                     chat_provider_id=provider_id,
@@ -253,8 +254,11 @@ class SmartJoinChat(Star):
                 )
                 return False
 
-    async def _bot_names(self, event: AstrMessageEvent) -> list[str]:
-        """Resolve names and aliases the group might use for this bot."""
+    async def _decision_identity(
+        self,
+        event: AstrMessageEvent,
+    ) -> tuple[list[str], str]:
+        """Resolve bot names and the selected persona prompt for the decision."""
         names: list[str] = []
 
         def add_name(value: Any) -> None:
@@ -292,48 +296,49 @@ class SmartJoinChat(Star):
                     for attr in ("display_name", "global_name", "name", "username"):
                         add_name(getattr(user, attr, None))
 
-        if not names:
-            persona_manager = getattr(self.context, "persona_manager", None)
-            conversation_manager = getattr(
-                self.context,
-                "conversation_manager",
-                None,
-            )
-            if persona_manager is not None:
-                try:
-                    persona_id = None
-                    if conversation_manager is not None:
-                        conversation_id = (
-                            await conversation_manager.get_curr_conversation_id(
-                                event.unified_msg_origin
-                            )
+        persona_prompt = ""
+        persona_manager = getattr(self.context, "persona_manager", None)
+        conversation_manager = getattr(
+            self.context,
+            "conversation_manager",
+            None,
+        )
+        if persona_manager is not None:
+            try:
+                persona_id = None
+                if conversation_manager is not None:
+                    conversation_id = (
+                        await conversation_manager.get_curr_conversation_id(
+                            event.unified_msg_origin
                         )
-                        if conversation_id:
-                            conversation = await conversation_manager.get_conversation(
-                                event.unified_msg_origin,
-                                conversation_id,
-                            )
-                            if conversation is not None:
-                                persona_id = conversation.persona_id
-                    _, persona, _, _ = await persona_manager.resolve_selected_persona(
-                        umo=event.unified_msg_origin,
-                        conversation_persona_id=persona_id,
-                        platform_name=event.get_platform_name(),
-                        provider_settings=self.context.get_config(
-                            umo=event.unified_msg_origin
-                        ).get("provider_settings", {}),
                     )
-                    if persona is not None:
-                        add_name(persona.get("name"))
-                except Exception:  # noqa: BLE001 - identity lookup is best-effort
-                    logger.debug(
-                        "[SmartJoinChat] Could not resolve the active persona name.",
-                        exc_info=True,
-                    )
+                    if conversation_id:
+                        conversation = await conversation_manager.get_conversation(
+                            event.unified_msg_origin,
+                            conversation_id,
+                        )
+                        if conversation is not None:
+                            persona_id = conversation.persona_id
+                _, persona, _, _ = await persona_manager.resolve_selected_persona(
+                    umo=event.unified_msg_origin,
+                    conversation_persona_id=persona_id,
+                    platform_name=event.get_platform_name(),
+                    provider_settings=self.context.get_config(
+                        umo=event.unified_msg_origin
+                    ).get("provider_settings", {}),
+                )
+                if persona is not None:
+                    add_name(persona.get("name"))
+                    persona_prompt = str(persona.get("prompt") or "").strip()
+            except Exception:  # noqa: BLE001 - identity lookup is best-effort
+                logger.debug(
+                    "[SmartJoinChat] Could not resolve the active persona.",
+                    exc_info=True,
+                )
 
         if not names:
             add_name(event.get_self_id())
-        return names
+        return names, persona_prompt
 
     @staticmethod
     def _group_name(event: AstrMessageEvent) -> str:

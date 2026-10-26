@@ -124,7 +124,7 @@ def active_reply_config(**overrides):
 
 
 @pytest.mark.asyncio
-async def test_contextual_decision_uses_isolated_provider_call():
+async def test_unprompted_decision_uses_isolated_provider_call():
     config = active_reply_config(
         smart_join_provider_id="decision-model",
         smart_join_history_count=2,
@@ -146,6 +146,8 @@ async def test_contextual_decision_uses_isolated_provider_call():
     assert call["session_id"]
     assert "Activeness: LOW" in call["prompt"]
     assert "Bot names / aliases: bot-1" in call["prompt"]
+    assert "does not need to be named or mentioned" in call["prompt"]
+    assert "without being named, mentioned, or explicitly" in call["system_prompt"]
     assert "[alice/12:00:03]: third" in call["prompt"]
     assert "[carol/12:00:05]: current" in call["prompt"]
     assert "[alice/12:00:00]: first" not in call["prompt"]
@@ -174,9 +176,74 @@ async def test_decision_prompt_uses_platform_bot_name():
 
     prompt = context.llm_calls[0]["prompt"]
     assert "Bot names / aliases: 大肥鱼" in prompt
-    assert (
-        "A direct use of any listed bot name" in context.llm_calls[0]["system_prompt"]
+    assert "not an automatic decision" in context.llm_calls[0]["system_prompt"]
+
+
+@pytest.mark.asyncio
+async def test_selected_persona_prompt_is_added_to_decision_context():
+    class Conversations:
+        async def get_curr_conversation_id(self, umo):
+            return "conversation-1"
+
+        async def get_conversation(self, umo, conversation_id):
+            return SimpleNamespace(persona_id="fish")
+
+    class Personas:
+        def __init__(self):
+            self.resolved = None
+
+        async def resolve_selected_persona(self, **kwargs):
+            self.resolved = kwargs
+            return (
+                "fish",
+                {
+                    "name": "默认人格",
+                    "prompt": "# 一、角色\n你是大肥鱼，一条好奇的鲸鱼。",
+                },
+                None,
+                False,
+            )
+
+    personas = Personas()
+    context = FakeContext(active_reply_config(), joins=True)
+    context.conversation_manager = Conversations()
+    context.persona_manager = personas
+    plugin = SmartJoinChat(context, None)
+    plugin._original_need_active_reply = _unexpected_original
+
+    await plugin._need_active_reply(
+        FakeGroupContext("platform:group:g1"),
+        FakeEvent(),
     )
+
+    prompt = context.llm_calls[0]["prompt"]
+    assert "Configured persona (identity and speaking style only)" in prompt
+    assert "你是大肥鱼，一条好奇的鲸鱼" in prompt
+    assert "Bot names / aliases: 默认人格" in prompt
+    assert personas.resolved["conversation_persona_id"] == "fish"
+
+
+@pytest.mark.asyncio
+async def test_name_reference_does_not_force_a_join():
+    class Robot:
+        name = "大肥鱼"
+
+    class Client:
+        robot = Robot()
+
+    platform = SimpleNamespace(client=Client(), config={})
+    context = FakeContext(active_reply_config(), joins=False, platform=platform)
+    plugin = SmartJoinChat(context, None)
+    plugin._original_need_active_reply = _unexpected_original
+    group_context = FakeGroupContext("platform:group:g1")
+    group_context.raw_records["platform:group:g1"][-1] = (
+        "[alice/12:00:03]: 大肥鱼你在吗"
+    )
+
+    join = await plugin._need_active_reply(group_context, FakeEvent())
+
+    assert join is False
+    assert "大肥鱼你在吗" in context.llm_calls[0]["prompt"]
 
 
 @pytest.mark.asyncio

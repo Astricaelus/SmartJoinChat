@@ -13,6 +13,8 @@ decides whether the bot should join the conversation.
 - Resolves the bot's display name from the platform adapter or active persona,
   so calls such as “Are you there, `<bot name>`?” are understood as directed at
   the bot.
+- Includes the selected persona prompt as identity/style context for the
+  decision, without reusing the main Agent conversation.
 - Reuses AstrBot's group-chat context formatter and in-memory history, including
   image captions and the configured maximum history size.
 - Collects messages for the decision even when group-context injection is off,
@@ -67,13 +69,18 @@ new method it:
 3. Reads the latest entries from AstrBot's group-context history and formats the
    current message with AstrBot's existing formatter.
 4. Calls the selected provider with a separate system prompt, transcript, and
-   unique session ID.
+   unique session ID. The selected persona prompt is included as background
+   identity/style context, not as conversation history.
 5. Accepts only a strict `{"join": boolean, "reason": "..."}` decision. Invalid
    or ambiguous output is treated as "do not join" so a model failure cannot
    create message spam.
 
 The main Agent still writes any actual reply. The decision call never writes to
 the main conversation history.
+
+The bot may join based on conversational relevance even when nobody mentions or
+invites it by name. A name reference is treated as context to evaluate, not an
+automatic reply trigger.
 
 ## Compatibility note
 
@@ -91,6 +98,7 @@ integration layer can be replaced without changing the decision engine.
 
 ## Privacy
 
-The recent group transcript is sent to the decision provider selected in the
-profile. With an empty provider, it uses the bot's current chat provider. Review
-your provider and privacy requirements before enabling the feature.
+The recent group transcript and selected persona prompt are sent to the decision
+provider selected in the profile. With an empty provider, it uses the bot's
+current chat provider. Review your provider and privacy requirements before
+enabling the feature.

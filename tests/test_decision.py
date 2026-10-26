@@ -1,4 +1,5 @@
 from SmartJoinChat.decision import (
+    MAX_PERSONA_PROMPT_CHARS,
     ProbabilityGate,
     build_decision_prompt,
     normalize_settings,
@@ -43,6 +44,27 @@ def test_build_decision_prompt_contains_activeness_and_history():
     assert "helper" in prompt
     assert "large fish" in prompt
     assert "bot-123" in prompt
+    assert "does not need to be named or mentioned" in prompt
+
+
+def test_build_decision_prompt_includes_persona_and_limits_size():
+    settings = normalize_settings({"smart_join_activeness": "medium"})
+    prompt = build_decision_prompt(
+        ["[alice/12:00:00]: 大肥鱼你在吗"],
+        settings,
+        bot_names=["大肥鱼"],
+        persona_prompt="# 一、角色\n你是大肥鱼，一条好奇的鲸鱼。",
+    )
+    assert "<persona>" in prompt
+    assert "你是大肥鱼" in prompt
+    assert "<transcript>" in prompt
+
+    truncated = build_decision_prompt(
+        [],
+        settings,
+        persona_prompt="x" * (MAX_PERSONA_PROMPT_CHARS + 100),
+    )
+    assert "[persona prompt truncated]" in truncated
 
 
 def test_parse_decision_accepts_json_and_fenced_json():
